@@ -1,6 +1,6 @@
-# Straw Hat Samurai: Duels — Local Solo Build
+# Straw Hat Samurai: Duels Revival
 
-A playable offline copy of *Straw Hat Samurai: Duels* (v0.682), rebuilt from the original game files and a small local emulator.
+**Straw Hat Samurai: Duels Revival** — searchable as "shs: d" — the 2015 PlayerIO Flash game, playable offline again. Original client, local server, unmodified.
 
 ## Play it (any OS)
 
@@ -8,15 +8,15 @@ You only need **Git** and **Python 3**.
 
 **macOS / Linux:**
 ```bash
-git clone https://github.com/godman4242/shs-solo.git
-cd shs-solo
+git clone https://github.com/godman4242/shs-duels-revival.git
+cd shs-duels-revival
 ./play.sh
 ```
 
 **Windows:**
 ```bat
-git clone https://github.com/godman4242/shs-solo.git
-cd shs-solo
+git clone https://github.com/godman4242/shs-duels-revival.git
+cd shs-duels-revival
 play.bat
 ```
 

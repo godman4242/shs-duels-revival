@@ -21,3 +21,13 @@ shs-recovery.tar.gz
 *.solo_state.json.bak
 __pycache__/
 *.pyc
+
+# Decompiled client reference — LOCAL ONLY, never commit (repo is public)
+reference/
+
+# local backups
+*.bak-*
+
+# decoded game payload — decrypted decompilable bytecode, LOCAL ONLY (repo is public)
+payload-2026-DEC.swf
+shs-solo/
