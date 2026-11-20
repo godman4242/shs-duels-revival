@@ -43,6 +43,31 @@ MAX_BODY = 10 * 1024 * 1024  # 10 MB — anything larger is refused unread
 def allowed_origin() -> str:
     return "http://playerio.localhost:%d" % PORT
 
+
+LOCAL_HOSTS = ("playerio.localhost", "localhost", "127.0.0.1")
+
+
+def allowed_hosts() -> set:
+    """Host headers we answer to. Anything else is a DNS-rebinding attempt:
+    the attacker's page resolves its own name to 127.0.0.1, so the browser
+    treats it as same-origin and CORS never gets a say."""
+    names = set()
+    for name in LOCAL_HOSTS:
+        names.add(name)
+        names.add("%s:%d" % (name, PORT))
+    return names
+
+
+def allowed_launch_origins() -> set:
+    """Origins the launcher can legitimately produce. This gates state-mutating
+    requests only (CORS stays stricter above), so the game keeps working
+    whichever localhost spelling the player opened."""
+    return {"http://%s:%d" % (name, PORT) for name in LOCAL_HOSTS}
+
+
+MUTATING_EPS = {"login", "login_internal", "register",
+                "saveplayer", "saveplayer_internal"}
+
 # Guest character: name,level -> charstring format is "name,level"
 GUEST_CHAR = "Kenshin,1"
 
@@ -143,7 +168,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(body)
 
     def do_OPTIONS(self):
-        self._send(200, b"")
+        self._route("OPTIONS")
 
     def do_GET(self):
         self._route("GET")
@@ -177,6 +202,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return raw.decode("utf-8", "replace")
 
     def _route(self, method):
+        # DNS rebinding: a foreign name pointed at 127.0.0.1 would otherwise be
+        # same-origin with this server and could read the local-only trees.
+        host = (self.headers.get("Host") or "").lower()
+        if host not in allowed_hosts():
+            return self._send(403, b"forbidden")
+        if method == "OPTIONS":
+            return self._send(200, b"")
+
         # Refuse an oversized body before reading a single byte of it.
         try:
             length = int(self.headers.get("Content-Length") or 0)
@@ -221,6 +254,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def _php(self, ep, method):
         body = self._body()
         sys.stderr.write("  [solo] PHP %s %s body=%r\n" % (method, ep, body[:400]))
+
+        # CORS governs who may READ a response; it does not stop the request.
+        # A hostile page can still POST here as a "simple request", so the
+        # endpoints that write state verify the caller's Origin themselves.
+        if ep in MUTATING_EPS:
+            origin = self.headers.get("Origin")
+            if origin and origin not in allowed_launch_origins():
+                return self._send(403, b"forbidden")
+
         p = STATE["player"]
 
         # ---- LOGIN -------------------------------------------------------

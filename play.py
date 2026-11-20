@@ -73,6 +73,8 @@ def main():
     )
 
     def cleanup():
+        if proc.poll() is not None:
+            return
         print("\n⏹ Stopping server ...")
         try:
             proc.terminate()
@@ -81,28 +83,31 @@ def main():
             proc.kill()
 
     def on_signal(signum=None, frame=None):
-        cleanup()
-        sys.exit(0)
+        # Do not wait here: this handler runs on top of the thread blocked in
+        # proc.wait(), which still holds subprocess's waitpid lock, so a nested
+        # proc.wait(timeout=5) cannot acquire it and always burns the timeout.
+        raise KeyboardInterrupt
 
     signal.signal(signal.SIGINT, on_signal)
     signal.signal(signal.SIGTERM, on_signal)
 
-    print("▶ Waiting for server to answer ...")
-    # Probe the loopback literal, not the hostname: not every OS resolver maps
-    # *.localhost (glibc does not; browsers do), and a failed lookup here would
-    # abort a launch that the browser could have handled fine.
-    if not wait_for_server("127.0.0.1", PORT):
-        print("❌ Server did not start. Check the output above for errors.")
-        cleanup()
-        return 1
-
-    print(f"▶ Opening browser to {URL} ...")
-    open_browser(URL)
-
-    print("\n✅ Game is running. Close this window to stop the server.\n")
     try:
+        print("▶ Waiting for server to answer ...")
+        # Probe the loopback literal, not the hostname: not every OS resolver maps
+        # *.localhost (glibc does not; browsers do), and a failed lookup here would
+        # abort a launch that the browser could have handled fine.
+        if not wait_for_server("127.0.0.1", PORT):
+            print("❌ Server did not start. Check the output above for errors.")
+            return 1
+
+        print(f"▶ Opening browser to {URL} ...")
+        open_browser(URL)
+
+        print("\n✅ Game is running. Close this window to stop the server.\n")
         proc.wait()
     except KeyboardInterrupt:
+        pass
+    finally:
         cleanup()
     return 0
 
