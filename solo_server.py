@@ -34,8 +34,14 @@ from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT_REAL = os.path.realpath(ROOT)
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8765
 STATE_FILE = os.path.join(ROOT, ".solo_state.json")
+MAX_BODY = 10 * 1024 * 1024  # 10 MB — anything larger is refused unread
+
+
+def allowed_origin() -> str:
+    return "http://playerio.localhost:%d" % PORT
 
 # Guest character: name,level -> charstring format is "name,level"
 GUEST_CHAR = "Kenshin,1"
@@ -123,8 +129,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "*")
+        # Only the game's own origin is granted CORS. Same-origin GETs carry
+        # no Origin header at all, so an absent header must stay valid.
+        origin = self.headers.get("Origin")
+        if origin and origin == allowed_origin():
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
@@ -137,11 +148,20 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         self._route("GET")
 
+    def do_HEAD(self):
+        # Without this, SimpleHTTPRequestHandler's own HEAD path would answer
+        # for dotfiles and skip the confinement checks entirely.
+        self._route("HEAD")
+
     def do_POST(self):
         self._route("POST")
 
     def _body(self) -> str:
-        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            n = 0
+        n = max(0, min(n, MAX_BODY))
         if not n:
             return ""
         raw = self.rfile.read(n)
@@ -157,7 +177,17 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return raw.decode("utf-8", "replace")
 
     def _route(self, method):
-        path = urllib.parse.urlparse(self.path).path
+        # Refuse an oversized body before reading a single byte of it.
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
+        if length > MAX_BODY:
+            return self._send(413, b"payload too large")
+
+        # Decode percent-escapes FIRST, so %2e%2e%2f is seen as "../" by the
+        # confinement check below rather than slipping past it as a filename.
+        path = urllib.parse.unquote(urllib.parse.urlparse(self.path).path)
 
         # --- PHP emulation -------------------------------------------------
         if "/server/" in path:
@@ -173,7 +203,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             parts = rel.split("/", 2)
             if len(parts) == 3:
                 rel = parts[2]
-        fs = os.path.join(ROOT, rel)
+
+        # Dot-segments are never public: no dotfiles, no .git, no "..".
+        segments = [s for s in rel.split("/") if s not in ("", ".")]
+        if any(s.startswith(".") for s in segments):
+            return self._send(403, b"forbidden")
+
+        fs = os.path.realpath(os.path.join(ROOT, rel))
+        if fs != ROOT_REAL and not fs.startswith(ROOT_REAL + os.sep):
+            return self._send(403, b"forbidden")
         if os.path.isfile(fs):
             with open(fs, "rb") as fh:
                 data = fh.read()
@@ -266,7 +304,7 @@ class Server(socketserver.ThreadingTCPServer):
 if __name__ == "__main__":
     os.chdir(ROOT)
     print(f"[solo] serving {ROOT}")
-    print(f"[solo] game   : http://playerio.localhost:{PORT}/shs3_patched.swf")
+    print(f"[solo] game   : http://playerio.localhost:{PORT}/shs3_solo.swf")
     print(f"[solo] php    : http://playerio.localhost:{PORT}/solo/server/*.php")
     print(f"[solo] guest  : {GUEST_CHAR}")
     with Server(("127.0.0.1", PORT), Handler) as httpd:

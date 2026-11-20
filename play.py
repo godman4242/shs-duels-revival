@@ -67,27 +67,34 @@ def main():
 
     print(f"\n▶ Starting local server on {URL} ...")
     proc = subprocess.Popen(
-        [sys.executable, server_script, str(PORT), root()],
+        [sys.executable, server_script, str(PORT)],
         stdout=sys.stdout, stderr=sys.stderr,
         cwd=root(),
     )
 
-    def cleanup(signum=None, frame=None):
+    def cleanup():
         print("\n⏹ Stopping server ...")
         try:
             proc.terminate()
             proc.wait(timeout=5)
         except Exception:
             proc.kill()
+
+    def on_signal(signum=None, frame=None):
+        cleanup()
         sys.exit(0)
 
-    signal.signal(signal.SIGINT, cleanup)
-    signal.signal(signal.SIGTERM, cleanup)
+    signal.signal(signal.SIGINT, on_signal)
+    signal.signal(signal.SIGTERM, on_signal)
 
     print("▶ Waiting for server to answer ...")
-    if not wait_for_server(HOST, PORT):
+    # Probe the loopback literal, not the hostname: not every OS resolver maps
+    # *.localhost (glibc does not; browsers do), and a failed lookup here would
+    # abort a launch that the browser could have handled fine.
+    if not wait_for_server("127.0.0.1", PORT):
         print("❌ Server did not start. Check the output above for errors.")
         cleanup()
+        return 1
 
     print(f"▶ Opening browser to {URL} ...")
     open_browser(URL)
@@ -97,6 +104,7 @@ def main():
         proc.wait()
     except KeyboardInterrupt:
         cleanup()
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
