@@ -1,6 +1,6 @@
 # Straw Hat Samurai: Duels Revival
 
-**Straw Hat Samurai: Duels Revival** — searchable as "shs: d" — the 2015 PlayerIO Flash game, playable offline again. Original client, local server, unmodified.
+**Straw Hat Samurai: Duels Revival** — searchable as "shs: d" — the 2015 PlayerIO Flash game, playable offline again. The original client, patched to run without its servers, plus a small local stand-in server.
 
 ## Play it (any OS)
 
@@ -33,7 +33,7 @@ If `playerio.localhost` does not load, add `127.0.0.1 playerio.localhost` to you
 | Solo overworld, quests, NPCs, shops, skills | ✅ works |
 | Saves (Guest character) | ✅ works locally in `.solo_state.json` |
 | Sound, music, art, UI | ✅ works |
-| PvP / multiplayer | ❌ needs the dead PlayerIO server — not possible today |
+| PvP / multiplayer | ❌ retired — the PlayerIO backend is gone for good |
 | Premium currency / payments | ❌ the payment server is dead — ignored |
 
 ## Project layout
@@ -63,4 +63,10 @@ Want the whole story? **[Reviving a Dead Game](<REVIVAL-COURSE.md>)** is a build
 
 This repo preserves the compiled SWF and the surviving assets so the game can still be played after the original servers shut down. The PHP backend (`strawhatsamuraiduels.com`) is NXDOMAIN and the PlayerIO RPC backend returns HTTP 500, so the online features are gone. The local server emulates just enough of the login/data API to make the solo portion of the game work.
 
-For the full patch list, build notes, and asset recovery log, see the files under `docs/` and `patches/`.
+This is a fan preservation copy, not an official release, and it is not affiliated
+with the original studio. The game and its assets are not open source; only this
+repository's own code is (see `LICENSE`). The bundled Flash player is Ruffle, under
+its own licence (`RUFFLE-LICENSE.txt`).
+
+For the exact source changes that make the game run offline, see `patches/`; for
+setup, controls and troubleshooting, see `USER_GUIDE.md`.
