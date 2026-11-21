@@ -30,7 +30,7 @@
   th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);background:#191411}
   tr:last-child td{border-bottom:none}
   td.name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
-  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   td.act{white-space:nowrap;text-align:right}
   button{
     font:inherit;font-size:13px;padding:6px 12px;border-radius:4px;cursor:pointer;
@@ -46,6 +46,10 @@
   details ol{padding-left:20px}
   details li{margin:6px 0}
   .hint{font-size:13px;color:var(--dim);margin:8px 0 0;max-width:620px}
+  /* Narrow screens: the tables are wider than the phone, so they scroll
+     sideways inside the wrapper instead of pushing the buttons off-screen. */
+  .tablewrap{overflow-x:auto}
+  td.when{white-space:nowrap}
   .back{margin:0 0 14px;font-size:13px}
   .back a{color:var(--gold);text-decoration:none}
   .back a:hover{text-decoration:underline}
@@ -72,6 +76,7 @@
   <h2>Saved characters</h2>
   <p class="hint">Characters you switched away from on the game's start menu. <b>Make active</b>
   puts one back in play — whatever is in play now is filed here in its place, so nothing is lost.</p>
+  <div class="tablewrap">
   <table id="slots">
     <thead>
       <tr>
@@ -80,11 +85,13 @@
     </thead>
     <tbody></tbody>
   </table>
+  </div>
 
   <h2>The character in this browser</h2>
   <p class="hint">This is what the game loads right now, stored as two objects that belong
   together: <code>shsd</code> (the index) and <code>shsd_guest</code> (the character). Download
   both if you want a full copy — a character without its index will not load.</p>
+  <div class="tablewrap">
   <table id="list">
     <thead>
       <tr>
@@ -93,6 +100,7 @@
     </thead>
     <tbody></tbody>
   </table>
+  </div>
 
   <div id="msg"></div>
 
@@ -232,6 +240,7 @@ function renderSlots() {
     tr.appendChild(numberCell(info ? info.coins : null));
 
     var c4 = document.createElement("td");
+    c4.className = "when";
     c4.textContent = when(slot.ts);
     tr.appendChild(c4);
 

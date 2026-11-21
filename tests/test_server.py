@@ -256,6 +256,14 @@ class ServerTest(unittest.TestCase):
         self.assertIn("Make active", text)
         self.assertIn('<script src="save-slots.js">', text)
 
+    def test_saves_page_tables_scroll_on_a_phone(self):
+        # At 390 px the tables are wider than the screen and the action
+        # buttons fall off the right edge, unreachable. Each table must sit in
+        # a horizontally scrolling wrapper instead.
+        _, _, body = get("/saves.html")
+        text = body.decode("utf-8")
+        self.assertEqual(text.count('<div class="tablewrap">'), 2)
+
     def test_saves_page_parser_is_served(self):
         # saves.html loads sol-format.js; without it the page lists no details.
         status, _, body = get("/sol-format.js")
