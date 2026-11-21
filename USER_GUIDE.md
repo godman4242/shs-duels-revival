@@ -88,6 +88,7 @@ Once there is a character in this browser, the game page opens on a **start menu
   starts a fresh level-1 game. Nothing is lost.
 - **Saved characters** — one entry per filed character, with level, coins and when it was
   saved. Click one to put it back in play; whatever was in play is filed away instead.
+  The **×** button forgets one for good — download a `.sol` first if you want a copy.
 
 The first visit in a clean browser skips the menu and goes straight into the game.
 

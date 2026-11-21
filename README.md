@@ -37,10 +37,13 @@ If `playerio.localhost` does not load, add `127.0.0.1 playerio.localhost` to you
 | Premium currency / payments | ❌ the payment server is dead — ignored |
 
 Your character lives in this browser, for the site `playerio.localhost:8765` — clearing
-this site's data wipes it. Right-click the game → **Save Manager** to back up, restore or
-delete a character: the download arrow writes a `.sol` file, the file icon restores one,
-the trash icon deletes one. Keep as many `.sol` backups as you like and swap between
-them; one character is active at a time (see `USER_GUIDE.md` §5 for the exact steps).
+this site's data wipes it. Once a character exists, opening the game shows a start menu:
+**Continue**, **Start a new character**, or pick one of your **saved characters** (each
+keeps its level and coins; switching files the current one away).
+
+For copies on disk, right-click the game → **Save Manager** (the download arrow writes a
+`.sol` file, the file icon restores one), or open `/saves.html`, which lists every save in
+this browser and imports one back. See `USER_GUIDE.md` §5 for the exact steps.
 
 ## Project layout
 

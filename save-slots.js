@@ -39,11 +39,14 @@
     st.setItem(K_SLOTS, JSON.stringify(list));
   }
 
-  /* The character currently in play, or null if the browser has none. */
+  /* The character currently in play, or null if the browser has none.
+   * `complete` is false when the index is missing — a character without its
+   * index is not a loadable state, so callers must not offer it. */
   function current(st) {
     var save = st.getItem(K_CHAR);
     if (!save) return null;
-    return { save: save, index: st.getItem(K_INDEX) };
+    var index = st.getItem(K_INDEX);
+    return { save: save, index: index, complete: !!index };
   }
 
   /* Move the character in play into the slot list. Returns the new slot, or
@@ -57,6 +60,13 @@
       save: cur.save,
       index: cur.index
     };
+    /* Starting a new character twice without playing in between must not
+       leave two identical entries: refresh the newest one instead. */
+    if (list.length && list[0].save === slot.save && list[0].index === slot.index) {
+      list[0].ts = slot.ts;
+      writeSlots(st, list);
+      return list[0];
+    }
     list.unshift(slot);
     writeSlots(st, list);
     return slot;
@@ -87,6 +97,19 @@
     return slot;
   }
 
+  /* Drop one slot for good. Returns it, or null when it was not there. */
+  function forget(st, ts) {
+    var list = readSlots(st);
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].ts === ts) {
+        var gone = list.splice(i, 1)[0];
+        writeSlots(st, list);
+        return gone;
+      }
+    }
+    return null;
+  }
+
   var api = {
     PREFIX: PREFIX,
     K_INDEX: K_INDEX,
@@ -96,7 +119,8 @@
     current: current,
     stash: stash,
     clearCurrent: clearCurrent,
-    restore: restore
+    restore: restore,
+    forget: forget
   };
   root.SaveSlots = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

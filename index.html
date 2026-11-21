@@ -33,6 +33,12 @@
   #menu .foot a{color:#c9a227}
   #menu .sep{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7d6f63;
              margin:14px 0 0}
+  #menu .hint{font-size:12px;color:#8f8073;margin:2px 0 4px;max-width:340px}
+  #menu .warn{font-size:13px;color:#e8a8a8;background:#2a1512;border:1px solid #a83232;
+              border-radius:6px;padding:10px 12px;margin:0}
+  #menu .row{display:flex;gap:8px}
+  #menu .row .slot{flex:1;min-width:0}
+  #menu .forget{flex:none;width:46px;text-align:center;font-size:18px;line-height:1;padding:12px 0}
 </style>
 </head>
 <body>
@@ -53,7 +59,11 @@
 (function () {
   "use strict";
 
+  var booted = false;
+
   function boot() {
+    if (booted) return;          // a double-click must not start two players
+    booted = true;
     document.getElementById("menu").hidden = true;
     var RP = window.RufflePlayer;
     if (!RP) {
@@ -114,33 +124,52 @@
     var actions = document.getElementById("menu-actions");
     actions.textContent = "";
 
-    if (cur) {
+    /* Two states will not load: a character without its index, and an index
+     * without its character. Neither may be offered as "play". */
+    var usable = !!(cur && cur.complete);
+    var strayIndex = !cur && !!st.getItem(SaveSlots.K_INDEX);
+
+    if (usable) {
       actions.appendChild(button(
         "Continue",
         describe(cur.save),
         "primary",
         function () { boot(); }
       ));
-    } else {
+    } else if (!cur && !strayIndex) {
       actions.appendChild(button(
         "Start playing",
         "No character in this browser yet",
         "primary",
         function () { boot(); }
       ));
+    } else {
+      var warn = document.createElement("p");
+      warn.className = "warn";
+      warn.textContent = cur
+        ? "A character is stored here but the game's index for it is missing, so it will not "
+          + "load. Download it from the saves page if you want to keep it, then start a new "
+          + "character."
+        : "The game's index is here but the character it points to is missing, so the game "
+          + "will not start. Start a new character to rebuild it.";
+      actions.appendChild(warn);
     }
 
     actions.appendChild(button(
       "Start a new character",
-      cur ? "Keeps " + describe(cur.save) + " in your saved characters" : "Begin from level 1",
+      usable ? "Keeps " + describe(cur.save) + " in your saved characters"
+             : (cur ? "The unloadable character is discarded" : "Begin from level 1"),
       "",
       function () {
-        if (cur && !confirm(
+        if (usable && !confirm(
             "Start a new character?\n\n" +
             "Your current one (" + describe(cur.save) + ") is kept under Saved characters, " +
             "so you can come back to it.")) return;
+        if (cur && !usable && !confirm(
+            "The stored character cannot be loaded (the game's index for it is missing).\n\n" +
+            "Discard it and start a new character?")) return;
         try {
-          if (cur) SaveSlots.stash(st);
+          if (usable) SaveSlots.stash(st);
           SaveSlots.clearCurrent(st);   // the index goes too: clearing only the
                                         // character wedges the game on LOADING
         } catch (e) {
@@ -157,14 +186,24 @@
       sep.textContent = "Saved characters";
       actions.appendChild(sep);
 
+      var hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = usable
+        ? "Click one to switch — what you are playing now takes its place."
+        : "Click one to play it.";
+      actions.appendChild(hint);
+
       slots.forEach(function (slot) {
-        var b = button(
+        var row = document.createElement("div");
+        row.className = "row";
+
+        var play = button(
           describe(slot.save),
           (slot.index ? "" : "Incomplete backup — cannot be restored. ") + "saved " + when(slot.ts),
           "slot",
           function () {
             try {
-              if (cur) SaveSlots.stash(st);
+              if (usable) SaveSlots.stash(st);
               var moved = SaveSlots.restore(st, slot.ts);
               if (!moved) { renderMenu(); return; }   // nothing moved; redraw
             } catch (e) {
@@ -174,17 +213,36 @@
             boot();
           }
         );
-        if (!slot.index) b.disabled = true;
-        actions.appendChild(b);
+        play.disabled = !slot.index;
+        row.appendChild(play);
+
+        var drop = document.createElement("button");
+        drop.className = "forget";
+        drop.textContent = "×";
+        drop.title = "Forget this saved character";
+        drop.setAttribute("aria-label", "Forget " + describe(slot.save));
+        drop.onclick = function () {
+          if (!confirm("Forget this saved character (" + describe(slot.save) + ")?\n\n"
+                       + "It is deleted from this browser. Download it from the saves page first "
+                       + "if you want to keep a copy.")) return;
+          SaveSlots.forget(st, slot.ts);
+          renderMenu();
+        };
+        row.appendChild(drop);
+
+        actions.appendChild(row);
       });
     }
   }
 
   function init() {
     try {
-      var hasCharacter = !!SaveSlots.current(localStorage);
-      var hasSlots = SaveSlots.readSlots(localStorage).length > 0;
-      if (!hasCharacter && !hasSlots) { boot(); return; }
+      /* Show the menu when there is anything to decide about — a character,
+         a saved one, or a stray index that on its own stops the game loading. */
+      var anything = SaveSlots.current(localStorage)
+        || SaveSlots.readSlots(localStorage).length
+        || localStorage.getItem(SaveSlots.K_INDEX);
+      if (!anything) { boot(); return; }
       renderMenu();
       document.getElementById("menu").hidden = false;
     } catch (e) {

@@ -69,11 +69,33 @@ class SaveSlotsTest(unittest.TestCase):
 
     def test_current_reads_both_keys(self):
         got = self.call("return S.current(st);", {K_INDEX: "idx", K_CHAR: "char"})
-        self.assertEqual(got["out"], {"save": "char", "index": "idx"})
+        self.assertEqual(got["out"], {"save": "char", "index": "idx", "complete": True})
 
     def test_current_is_null_without_a_character(self):
         got = self.call("return S.current(st);", {K_INDEX: "idx"})
         self.assertIsNone(got["out"])
+
+    def test_current_flags_a_character_without_its_index(self):
+        # The state a saves.html import used to be able to create: a character
+        # whose index is missing, which the game will not load.
+        got = self.call("return S.current(st);", {K_CHAR: "orphan"})
+        self.assertEqual(got["out"]["complete"], False)
+
+    def test_forget_drops_only_the_named_slot(self):
+        init = {SLOTS: json.dumps([
+            {"ts": "t1", "save": "one", "index": "i1"},
+            {"ts": "t2", "save": "two", "index": "i2"},
+        ])}
+        got = self.call("return S.forget(st, 't1');", init)
+        self.assertEqual(got["out"]["save"], "one")
+        left = json.loads(got["vals"][SLOTS])
+        self.assertEqual([s["ts"] for s in left], ["t2"])
+
+    def test_forget_of_an_unknown_slot_changes_nothing(self):
+        init = {SLOTS: json.dumps([{"ts": "t1", "save": "one", "index": "i1"}])}
+        got = self.call("return S.forget(st, 'nope');", init)
+        self.assertIsNone(got["out"])
+        self.assertEqual(len(json.loads(got["vals"][SLOTS])), 1)
 
     def test_clear_removes_index_and_character_together(self):
         # Removing only the character wedges the game on LOADING (measured).
@@ -87,6 +109,17 @@ class SaveSlotsTest(unittest.TestCase):
         self.assertEqual(got["out"]["save"], "char")
         self.assertIn(K_CHAR, got["keys"])          # still playing
         self.assertIn(K_INDEX, got["keys"])
+
+    def test_stashing_the_same_character_twice_keeps_one_entry(self):
+        # "Start a new character" twice without playing in between.
+        init = {
+            K_INDEX: "idx", K_CHAR: "char",
+            SLOTS: json.dumps([{"ts": "old", "save": "char", "index": "idx"}]),
+        }
+        got = self.call("return S.stash(st, 'new');", init)
+        slots = json.loads(got["vals"][SLOTS])
+        self.assertEqual(len(slots), 1)
+        self.assertEqual(slots[0]["ts"], "new")
 
     def test_restore_swaps_both_keys_and_drops_the_slot(self):
         init = {
