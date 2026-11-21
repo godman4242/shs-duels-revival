@@ -39,7 +39,8 @@ If `playerio.localhost` does not load, add `127.0.0.1 playerio.localhost` to you
 Your character lives in this browser, for the site `playerio.localhost:8765` — clearing
 this site's data wipes it. Right-click the game → **Save Manager** to back up, restore or
 delete a character: the download arrow writes a `.sol` file, the file icon restores one,
-the trash icon deletes one (see `USER_GUIDE.md` §5 for the exact steps).
+the trash icon deletes one. Keep as many `.sol` backups as you like and swap between
+them; one character is active at a time (see `USER_GUIDE.md` §5 for the exact steps).
 
 ## Project layout
 

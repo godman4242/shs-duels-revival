@@ -64,6 +64,9 @@ has two rows that matter:
 file you can keep. Do not use "Download all save files": it writes a zip this build
 cannot read back.
 
+You can keep **as many `.sol` backups as you like** and restore whichever one you want;
+only one character is active in the game at a time.
+
 **Restore** — click the **file icon** on the same row, choose the `.sol`, confirm the
 reload prompt, then reload the page. The backup replaces whatever progress is there now.
 
