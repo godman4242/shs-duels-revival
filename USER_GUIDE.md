@@ -79,6 +79,21 @@ every save in this browser (name, level, coins), downloads any of them as a `.so
 imports one back — including when the save is gone from the list. Close the game tab
 before importing: a running game writes its own copy back over the import.
 
+### Characters — new character, and switching back
+
+Once there is a character in this browser, the game page opens on a **start menu**:
+
+- **Continue** — plays the character that is loaded now; its level and coins are on the button.
+- **Start a new character** — files the current character under *Saved characters* and
+  starts a fresh level-1 game. Nothing is lost.
+- **Saved characters** — one entry per filed character, with level, coins and when it was
+  saved. Click one to put it back in play; whatever was in play is filed away instead.
+
+The first visit in a clean browser skips the menu and goes straight into the game.
+
+*Saved characters* live in this browser. They are not the same thing as **Download**ed
+`.sol` files, which are separate copies you keep on disk.
+
 ## 6. Troubleshooting
 
 | Problem | Fix |

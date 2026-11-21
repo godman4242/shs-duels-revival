@@ -251,6 +251,17 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b"parseSol", body)
 
+    def test_game_page_still_loads_ruffle(self):
+        # Dropping this tag once shipped a page that only said "Ruffle module
+        # failed to load". A missing script is invisible to every other test.
+        _, _, body = get("/index.html")
+        self.assertIn(b'<script src="ruffle.js">', body)
+
+    def test_game_page_has_the_start_menu(self):
+        # The menu is how a player chooses Continue / New character / switch.
+        _, _, body = get("/index.html")
+        self.assertIn(b"Start a new character", body)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

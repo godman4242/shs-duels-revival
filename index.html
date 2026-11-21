@@ -10,37 +10,190 @@
   #game{width:900px;height:776px;max-width:100vw;max-height:100vh}
   #hint{position:fixed;left:12px;bottom:10px;font-size:12px;opacity:.5;z-index:9}
   code{background:#1b1b26;padding:2px 6px;border-radius:4px}
+
+  /* start menu */
+  #menu{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:6px;
+        background:radial-gradient(circle at 50% 40%,#241a14 0%,#0b0b12 70%)}
+  #menu[hidden]{display:none}
+  #menu h1{margin:0 0 2px;font-size:26px;font-weight:600;letter-spacing:.02em;text-align:center}
+  #menu h1 span{display:block;font-size:46px;font-weight:800;letter-spacing:.06em;
+                color:#c0272d;text-shadow:0 2px 0 #4d0f11}
+  #menu .sub{margin:0 0 22px;color:#a8988a;font-size:14px}
+  #menu .actions{display:flex;flex-direction:column;gap:10px;width:340px;max-width:86vw}
+  #menu button{font:inherit;font-size:15px;padding:12px 16px;border-radius:6px;cursor:pointer;
+               background:#241d18;color:#e8ddcf;border:1px solid #4a3a2e;text-align:left}
+  #menu button:hover{background:#33291f;border-color:#6b5340}
+  #menu button:disabled{opacity:.45;cursor:not-allowed}
+  #menu button:disabled:hover{background:#241d18;border-color:#4a3a2e}
+  #menu button.primary{border-color:#c9a227;color:#f0d98a}
+  #menu button small{display:block;font-size:12px;color:#a8988a;margin-top:2px}
+  #menu .slot small{color:#8f8073}
+  #menu .foot{margin-top:24px;font-size:13px;color:#8f8073}
+  #menu .foot a{color:#c9a227}
+  #menu .sep{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7d6f63;
+             margin:14px 0 0}
 </style>
 </head>
 <body>
 <div id="stage"><div id="game"></div></div>
 <div id="hint">Local solo build · Ruffle 0.7.1 · patched SWF · local PHP backend · <a href="/saves.html" style="color:#c9a227">Saves</a></div>
 
+<div id="menu" hidden>
+  <h1>Straw Hat Samurai<span>DUELS</span></h1>
+  <p class="sub">Local solo build — your progress lives in this browser.</p>
+  <div class="actions" id="menu-actions"></div>
+  <p class="foot"><a href="/saves.html">Manage save files</a> · backups you can download and import</p>
+</div>
+
 <script src="ruffle.js"></script>
+<script src="sol-format.js"></script>
+<script src="save-slots.js"></script>
 <script>
 (function () {
+  "use strict";
+
   function boot() {
+    document.getElementById("menu").hidden = true;
     var RP = window.RufflePlayer;
     if (!RP) {
-      document.getElementById('hint').textContent = 'Ruffle module failed to load.';
+      document.getElementById("hint").textContent = "Ruffle module failed to load.";
       return;
     }
-    var ruffle = typeof RP.newest === 'function' ? RP.newest() : RP.sources.local;
+    var ruffle = typeof RP.newest === "function" ? RP.newest() : RP.sources.local;
     var player = ruffle.createPlayer();
-    document.getElementById('game').appendChild(player);
+    document.getElementById("game").appendChild(player);
     player.ruffle().load({
-      url: location.origin + '/shs3_solo.swf',
-      autoplay: 'on',
-      unmuteOverlay: 'hidden',
+      url: location.origin + "/shs3_solo.swf",
+      autoplay: "on",
+      unmuteOverlay: "hidden",
       allowScriptAccess: true,
-      playerId: 'local-solo',
-      gameId: 'straw-hat-samurai-duels-5nsekxalfuoiuqdxrmtxw',
+      playerId: "local-solo",
+      gameId: "straw-hat-samurai-duels-5nsekxalfuoiuqdxrmtxw",
       allowExternalHttp: true,
     });
     window.__game = player;
   }
-  if (window.RufflePlayer) boot();
-  else window.addEventListener('load', boot);
+
+  /* "Level 3 · 1,240 coins" from a stored .sol, or a plain label if unreadable. */
+  function describe(b64) {
+    try {
+      var info = SolFormat.parseSol(b64);
+      if (info.level == null) return "character";
+      return "Level " + info.level + " · " + Number(info.coins).toLocaleString() + " coins";
+    } catch (e) {
+      return "unreadable save";
+    }
+  }
+
+  function when(ts) {
+    try {
+      return new Date(ts).toLocaleString(undefined, {
+        day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+      });
+    } catch (e) { return ""; }
+  }
+
+  function button(label, sub, cls, onClick) {
+    var b = document.createElement("button");
+    if (cls) b.className = cls;
+    b.appendChild(document.createTextNode(label));
+    if (sub) {
+      var s = document.createElement("small");
+      s.textContent = sub;
+      b.appendChild(s);
+    }
+    b.onclick = onClick;
+    return b;
+  }
+
+  function renderMenu() {
+    var st = localStorage;
+    var cur = SaveSlots.current(st);
+    var slots = SaveSlots.readSlots(st);
+    var actions = document.getElementById("menu-actions");
+    actions.textContent = "";
+
+    if (cur) {
+      actions.appendChild(button(
+        "Continue",
+        describe(cur.save),
+        "primary",
+        function () { boot(); }
+      ));
+    } else {
+      actions.appendChild(button(
+        "Start playing",
+        "No character in this browser yet",
+        "primary",
+        function () { boot(); }
+      ));
+    }
+
+    actions.appendChild(button(
+      "Start a new character",
+      cur ? "Keeps " + describe(cur.save) + " in your saved characters" : "Begin from level 1",
+      "",
+      function () {
+        if (cur && !confirm(
+            "Start a new character?\n\n" +
+            "Your current one (" + describe(cur.save) + ") is kept under Saved characters, " +
+            "so you can come back to it.")) return;
+        try {
+          if (cur) SaveSlots.stash(st);
+          SaveSlots.clearCurrent(st);   // the index goes too: clearing only the
+                                        // character wedges the game on LOADING
+        } catch (e) {
+          alert("Could not save your current character: " + e.message);
+          return;
+        }
+        boot();
+      }
+    ));
+
+    if (slots.length) {
+      var sep = document.createElement("p");
+      sep.className = "sep";
+      sep.textContent = "Saved characters";
+      actions.appendChild(sep);
+
+      slots.forEach(function (slot) {
+        var b = button(
+          describe(slot.save),
+          (slot.index ? "" : "Incomplete backup — cannot be restored. ") + "saved " + when(slot.ts),
+          "slot",
+          function () {
+            try {
+              if (cur) SaveSlots.stash(st);
+              var moved = SaveSlots.restore(st, slot.ts);
+              if (!moved) { renderMenu(); return; }   // nothing moved; redraw
+            } catch (e) {
+              alert("Could not switch character: " + e.message);
+              return;
+            }
+            boot();
+          }
+        );
+        if (!slot.index) b.disabled = true;
+        actions.appendChild(b);
+      });
+    }
+  }
+
+  function init() {
+    try {
+      var hasCharacter = !!SaveSlots.current(localStorage);
+      var hasSlots = SaveSlots.readSlots(localStorage).length > 0;
+      if (!hasCharacter && !hasSlots) { boot(); return; }
+      renderMenu();
+      document.getElementById("menu").hidden = false;
+    } catch (e) {
+      boot();  // never trap the player behind a broken menu
+    }
+  }
+
+  if (window.RufflePlayer) init();
+  else window.addEventListener("load", init);
 })();
 </script>
 </body>
