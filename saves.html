@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saves — Straw Hat Samurai: Duels (local solo build)</title>
+<style>
+  :root{
+    --bg:#14100e; --panel:#1e1814; --line:#3a2f27;
+    --ink:#e8ddcf; --dim:#a8988a; --gold:#c9a227; --red:#a83232; --ok:#5f9e5f;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; padding:24px 16px 64px; background:var(--bg); color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  }
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px;letter-spacing:.02em}
+  h1 small{display:block;font-weight:400;font-size:13px;color:var(--dim);margin-top:4px;letter-spacing:0}
+  .warn{
+    margin:20px 0; padding:14px 16px; border-radius:6px;
+    background:#2a1512; border:1px solid var(--red);
+  }
+  .warn strong{color:#e88; display:block; margin-bottom:4px}
+  .warn p{margin:0;font-size:14px;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);background:#191411}
+  tr:last-child td{border-bottom:none}
+  td.name{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--gold)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  td.act{white-space:nowrap;text-align:right}
+  button{
+    font:inherit;font-size:13px;padding:6px 12px;border-radius:4px;cursor:pointer;
+    background:#2b211b;color:var(--ink);border:1px solid var(--line);
+  }
+  button:hover{background:#3a2d24;border-color:#5a4636}
+  .empty{padding:20px;text-align:center;color:var(--dim);background:var(--panel);border:1px dashed var(--line);border-radius:6px}
+  #msg{margin-top:16px;padding:10px 14px;border-radius:6px;display:none;font-size:14px}
+  #msg.ok{display:block;background:#16281a;border:1px solid var(--ok);color:#b9e0b9}
+  #msg.bad{display:block;background:#2a1512;border:1px solid var(--red);color:#e8a8a8}
+  details{margin-top:28px;border-top:1px solid var(--line);padding-top:16px;color:var(--dim);font-size:14px}
+  summary{cursor:pointer;color:var(--ink)}
+  details ol{padding-left:20px}
+  details li{margin:6px 0}
+  .hint{font-size:13px;color:var(--dim);margin:8px 0 0;max-width:620px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--gold)}
+  footer{margin-top:32px;font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Saves
+    <small>Straw Hat Samurai: Duels — local solo build. Everything here lives in this browser only.</small>
+  </h1>
+
+  <div class="warn">
+    <strong>Close the game tab before importing.</strong>
+    <p>While the game is running it keeps its own copy of the save in memory and writes it back
+    when it closes — that overwrite can land on top of your import. Close the game tab, count two
+    seconds, then import. Reopen the game afterwards.</p>
+  </div>
+
+  <table id="list">
+    <thead>
+      <tr>
+        <th>Save</th><th>Level</th><th>Coins</th><th>Size</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="msg"></div>
+
+  <p style="margin-top:20px">
+    <button id="importAny">Import a .sol file…</button>
+    <button id="refresh" style="margin-left:6px">Refresh list</button>
+  </p>
+  <p class="hint">Use this when the save is gone from the list (cleared site data, new computer).
+  The file is put back under the name stored inside it.</p>
+
+  <details>
+    <summary>How to use this page</summary>
+    <ol>
+      <li><b>Back up:</b> press <b>Download</b> on a row. You get a <code>.sol</code> file — the
+        game's own save format. Keep as many as you like; they don't interfere.</li>
+      <li><b>Restore:</b> close the game tab, then press <b>Import</b> on the row you want to
+        overwrite and pick the <code>.sol</code> file. A file can only go back into the save it
+        came from (its name is stored inside it), which prevents mixing characters up.</li>
+      <li><b>Row missing</b> (site data cleared, new computer)? Use <b>Import a .sol file…</b>
+        below the list — it takes the name from the file itself. Boot the game once first so
+        the browser has a save slot to write into.</li>
+      <li><b>Start over without deleting your backup:</b> download first, then clear this site's
+        data in the browser; the game boots a fresh level-1 character on the next visit.</li>
+    </ol>
+    <p>The game's own <b>Save Manager</b> (the gear icon in-game) can also download and restore
+    saves. Both work; this page is just a single list of all of them.</p>
+  </details>
+
+  <footer>Local solo build · nothing on this page is sent anywhere.</footer>
+</div>
+
+<input id="picker" type="file" accept=".sol,application/octet-stream" hidden>
+
+<script src="sol-format.js"></script>
+<script>
+"use strict";
+
+/* Ruffle stores each Flash SharedObject as one localStorage entry under the
+   origin, keyed "<host>/<movie>/<objectname>". The save objects are named
+   shsd (the index of character names) and shsd_<charname> (the character). */
+var KEY_MATCH = "/shsd";
+var parseSol = SolFormat.parseSol;
+var bytesToB64 = SolFormat.bytesToB64;
+
+function listSaves() {
+  var rows = [];
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i);
+    if (!k || k.indexOf(KEY_MATCH) < 0) continue;
+    var v = localStorage.getItem(k) || "";
+    var info;
+    try { info = parseSol(v); }
+    catch (e) { info = { name: k.split("/").pop(), size: v.length, level: null, coins: null, error: e.message }; }
+    rows.push({ key: k, value: v, info: info });
+  }
+  rows.sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
+  return rows;
+}
+
+var msg = document.getElementById("msg");
+function say(text, ok) {
+  msg.textContent = text;
+  msg.className = ok ? "ok" : "bad";
+}
+
+function render() {
+  var tbody = document.querySelector("#list tbody");
+  tbody.textContent = "";
+  var rows = listSaves();
+
+  if (!rows.length) {
+    var tr = document.createElement("tr");
+    var td = document.createElement("td");
+    td.colSpan = 5; td.className = "empty";
+    td.textContent = "No saves in this browser yet. Play the game once, or import a .sol backup below.";
+    tr.appendChild(td); tbody.appendChild(tr);
+    return;
+  }
+
+  rows.forEach(function (row) {
+    var tr = document.createElement("tr");
+    var name = row.info.name || row.key.split("/").pop();
+
+    var c1 = document.createElement("td");
+    c1.className = "name";
+    c1.textContent = name;
+    if (name === "shsd") c1.title = "Index of character names — not a character save";
+    tr.appendChild(c1);
+
+    var c2 = document.createElement("td");
+    c2.className = "num";
+    c2.textContent = row.info.level != null ? row.info.level : (row.info.error ? "?" : "—");
+    tr.appendChild(c2);
+
+    var c3 = document.createElement("td");
+    c3.className = "num";
+    c3.textContent = row.info.coins != null ? row.info.coins : "—";
+    tr.appendChild(c3);
+
+    var c4 = document.createElement("td");
+    c4.className = "num";
+    c4.textContent = row.info.size + " B";
+    tr.appendChild(c4);
+
+    var c5 = document.createElement("td");
+    c5.className = "act";
+    var dl = document.createElement("button");
+    dl.textContent = "Download";
+    dl.onclick = function () { download(row, name); };
+    var im = document.createElement("button");
+    im.textContent = "Import";
+    im.style.marginLeft = "6px";
+    im.onclick = function () { pickFor(row, name); };
+    c5.appendChild(dl); c5.appendChild(im);
+    tr.appendChild(c5);
+
+    tbody.appendChild(tr);
+  });
+}
+
+function download(row, name) {
+  var bin = atob(row.value);
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  var url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
+  var a = document.createElement("a");
+  a.href = url; a.download = name + ".sol";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  say("Downloaded " + name + ".sol", true);
+}
+
+var pending = null;
+var picker = document.getElementById("picker");
+
+function pickFor(row, name) {
+  pending = { row: row, name: name };
+  picker.value = "";
+  picker.click();
+}
+
+function pickAny() {
+  pending = "any";
+  picker.value = "";
+  picker.click();
+}
+
+/* Ruffle keys every SharedObject as "<host>/<movie>/<objectname>". Reuse the
+   prefix already visible in storage; fall back to this build's movie name. */
+function keyPrefix() {
+  for (var i = 0; i < localStorage.length; i++) {
+    var k = localStorage.key(i) || "";
+    if (k.indexOf(KEY_MATCH) >= 0 && k.lastIndexOf("/") > 0) {
+      return k.slice(0, k.lastIndexOf("/") + 1);
+    }
+  }
+  return location.host + "/shs3_solo.swf/";
+}
+
+picker.addEventListener("change", function () {
+  var file = picker.files && picker.files[0];
+  if (!file || !pending) return;
+  var target = pending;
+  pending = null;
+
+  file.arrayBuffer().then(function (buf) {
+    var b64 = bytesToB64(new Uint8Array(buf));
+    var info;
+    try { info = parseSol(b64); }
+    catch (e) { return say("That file is not a usable save: " + e.message, false); }
+
+    var key, name;
+    if (target === "any") {
+      name = info.name;
+      key = keyPrefix() + name;
+    } else {
+      key = target.row.key;
+      name = target.name;
+      if (info.name !== name) {
+        return say('That file is the save "' + info.name + '", so it can only go back into "' +
+                   info.name + '". Nothing was changed.', false);
+      }
+    }
+
+    var before = "";
+    var existing = localStorage.getItem(key);
+    if (existing) {
+      try {
+        var old = parseSol(existing);
+        if (old.level != null) before = " (currently level " + old.level + ", " + old.coins + " coins)";
+      } catch (e) { before = " (currently unreadable)"; }
+    }
+
+    if (!confirm('Write "' + name + '"' + before + ' from "' + file.name + '"?\n\n' +
+                 "Make sure the game tab is closed, or the game will write its old copy back.")) {
+      return say("Import cancelled. Nothing was changed.", false);
+    }
+
+    localStorage.setItem(key, b64);
+    say('Imported "' + file.name + '" as "' + name + '". Now open the game — ' +
+        "it will load these numbers.", true);
+    render();
+  }).catch(function (e) {
+    say("Could not read that file: " + e.message, false);
+  });
+});
+
+document.getElementById("importAny").onclick = pickAny;
+document.getElementById("refresh").onclick = function () { render(); };
+render();
+</script>
+</body>
+</html>

@@ -233,6 +233,24 @@ class ServerTest(unittest.TestCase):
         status_line = data.split(b"\r\n", 1)[0].decode("latin-1")
         self.assertIn(" 413 ", status_line)
 
+    def test_saves_page_is_served(self):
+        status, _, body = get("/saves.html")
+        self.assertEqual(status, 200)
+        self.assertIn(b"Import a .sol file", body)
+
+    def test_saves_page_warns_to_close_the_game_first(self):
+        # Measured: an open game tab writes its in-memory copy back over an
+        # import, so the page must say to close it. This is the only guard.
+        _, _, body = get("/saves.html")
+        text = body.decode("utf-8")
+        self.assertIn("Close the game tab before importing", text)
+
+    def test_saves_page_parser_is_served(self):
+        # saves.html loads sol-format.js; without it the page lists no details.
+        status, _, body = get("/sol-format.js")
+        self.assertEqual(status, 200)
+        self.assertIn(b"parseSol", body)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

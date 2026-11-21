@@ -74,6 +74,11 @@ reload prompt, then reload the page. The backup replaces whatever progress is th
 download a backup before you delete. With the character row gone, the next reload starts
 a fresh level-1 character (the bare `shsd` row keeps the menu reachable).
 
+**All saves on one page** — open `http://playerio.localhost:8765/saves.html`. It lists
+every save in this browser (name, level, coins), downloads any of them as a `.sol`, and
+imports one back — including when the save is gone from the list. Close the game tab
+before importing: a running game writes its own copy back over the import.
+
 ## 6. Troubleshooting
 
 | Problem | Fix |
