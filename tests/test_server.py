@@ -196,12 +196,21 @@ class ServerTest(unittest.TestCase):
 
     def test_cross_origin_save_is_refused(self):
         # CORS only hides the reply; a hostile page can still POST here.
+        # login.php is a live state-writing endpoint (the guest flow never
+        # calls it, but the account flow does).
         status, _, _ = post(
-            "/solo/server/saveplayer.php",
-            "playergold=999999",
+            "/solo/server/login.php",
+            "charname=guest",
             origin=ORIGIN_BAD,
         )
         self.assertEqual(status, 403)
+
+    def test_removed_endpoint_falls_through_to_generic(self):
+        # The five dead PHP handlers were deleted; an unknown endpoint must
+        # still answer with the generic OK rather than a 404 or an error.
+        status, _, body = get("/solo/server/getgold.php")
+        self.assertEqual(status, 200)
+        self.assertIn(b"message=ok", body)
 
     def test_oversized_body_is_rejected_before_read(self):
         # Headers only: the server must answer 413 without waiting for the body.

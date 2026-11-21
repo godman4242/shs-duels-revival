@@ -53,8 +53,23 @@ Your progress is kept by your browser, for the game's address (`playerio.localho
 It is not a file next to `play.py`, and deleting `.solo_state.json` does not touch it.
 Clearing this site's data wipes the character.
 
-To keep a backup: right-click the game → **Save Manager** → the download arrow next to
-the `shsd_<name>` row. That writes a `.sol` save file you can keep.
+Open **Save Manager** by right-clicking the game. Besides an `analytics` entry, the list
+has two rows that matter:
+
+- `shsd` — the save index (the character's name). **Keep it**: without any save the
+  Save Manager menu entry disappears.
+- `shsd_<name>` — the character itself (level, coins, items, quests).
+
+**Back up** — click the **download arrow** on the `shsd_<name>` row. That writes a `.sol`
+file you can keep. Do not use "Download all save files": it writes a zip this build
+cannot read back.
+
+**Restore** — click the **file icon** on the same row, choose the `.sol`, confirm the
+reload prompt, then reload the page. The backup replaces whatever progress is there now.
+
+**Delete** — click the **trash icon**. It asks first, and it cannot be undone, so
+download a backup before you delete. With the character row gone, the next reload starts
+a fresh level-1 character (the bare `shsd` row keeps the menu reachable).
 
 ## 6. Troubleshooting
 

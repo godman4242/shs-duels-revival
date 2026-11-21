@@ -37,8 +37,9 @@ If `playerio.localhost` does not load, add `127.0.0.1 playerio.localhost` to you
 | Premium currency / payments | ❌ the payment server is dead — ignored |
 
 Your character lives in this browser, for the site `playerio.localhost:8765` — clearing
-this site's data wipes it. To keep a backup, right-click the game → **Save Manager** and
-use the download arrow next to the `shsd_<name>` row; that writes a `.sol` file.
+this site's data wipes it. Right-click the game → **Save Manager** to back up, restore or
+delete a character: the download arrow writes a `.sol` file, the file icon restores one,
+the trash icon deletes one (see `USER_GUIDE.md` §5 for the exact steps).
 
 ## Project layout
 

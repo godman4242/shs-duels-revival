@@ -26,11 +26,9 @@ VERIFIED DEAD (2026-10-30)
 import http.server
 import json
 import os
-import re
 import socketserver
 import sys
 import urllib.parse
-from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -65,8 +63,7 @@ def allowed_launch_origins() -> set:
     return {"http://%s:%d" % (name, PORT) for name in LOCAL_HOSTS}
 
 
-MUTATING_EPS = {"login", "login_internal", "register",
-                "saveplayer", "saveplayer_internal"}
+MUTATING_EPS = {"login", "login_internal", "register"}
 
 # Guest character: name,level -> charstring format is "name,level"
 GUEST_CHAR = "Kenshin,1"
@@ -263,8 +260,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if origin and origin not in allowed_launch_origins():
                 return self._send(403, b"forbidden")
 
-        p = STATE["player"]
-
         # ---- LOGIN -------------------------------------------------------
         if ep in ("login", "login_internal"):
             # The game parses this response as URL variables
@@ -302,32 +297,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             }
             return self._send(200, urlencode(params),
                               "application/x-www-form-urlencoded")
-
-        # ---- SAVE PLAYER -------------------------------------------------
-        if ep in ("saveplayer", "saveplayer_internal"):
-            for kv in body.split("&"):
-                if "=" in kv:
-                    k, v = kv.split("=", 1)
-                    k = urllib.parse.unquote(k)
-                    v = urllib.parse.unquote(v)
-                    if k in p:
-                        p[k] = v
-            save_state(STATE)
-            return self._send(200, json.dumps({"status": 0}), "application/json")
-
-        # ---- GOLD / STATS ------------------------------------------------
-        if ep == "getgold":
-            return self._send(200, json.dumps({"status": 0, "gold": p["playergold"]}),
-                              "application/json")
-        if ep == "getstats":
-            return self._send(200, json.dumps({"status": 0, "playerrow": player_row()}),
-                              "application/json")
-
-        # ---- TOWN / WORLD -------------------------------------------------
-        if ep in ("gettown", "getwar"):
-            return self._send(200, json.dumps({
-                "status": 0, "town": STATE["town"], "war": {},
-            }), "application/json")
 
         # ---- GENERIC -----------------------------------------------------
         # Unknown endpoint: keep answering (the client ignores what it does
