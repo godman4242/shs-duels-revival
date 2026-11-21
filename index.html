@@ -202,14 +202,14 @@
           (slot.index ? "" : "Incomplete backup — cannot be restored. ") + "saved " + when(slot.ts),
           "slot",
           function () {
+            var moved;
             try {
-              if (usable) SaveSlots.stash(st);
-              var moved = SaveSlots.restore(st, slot.ts);
-              if (!moved) { renderMenu(); return; }   // nothing moved; redraw
+              moved = SaveSlots.activate(st, slot.ts);
             } catch (e) {
               alert("Could not switch character: " + e.message);
               return;
             }
+            if (!moved) { renderMenu(); return; }   // nothing moved; redraw
             boot();
           }
         );

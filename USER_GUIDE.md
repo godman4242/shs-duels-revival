@@ -74,10 +74,19 @@ reload prompt, then reload the page. The backup replaces whatever progress is th
 download a backup before you delete. With the character row gone, the next reload starts
 a fresh level-1 character (the bare `shsd` row keeps the menu reachable).
 
-**All saves on one page** — open `http://playerio.localhost:8765/saves.html`. It lists
-every save in this browser (name, level, coins), downloads any of them as a `.sol`, and
-imports one back — including when the save is gone from the list. Close the game tab
-before importing: a running game writes its own copy back over the import.
+**All characters and saves on one page** — open `http://playerio.localhost:8765/saves.html`.
+It has three parts:
+
+- **Saved characters** — the characters filed away from the start menu, with level, coins
+  and when they were saved. **Make active** puts one back in play (whatever is in play now
+  takes its place in the list), **Download** writes a `.sol` copy, **Forget** deletes it
+  from this browser.
+- **The character in this browser** — the two objects the game loads right now (`shsd` and
+  `shsd_guest`), each with Download and Import.
+- **Restore from a file** — imports a `.sol` when its row is gone.
+
+Close the game tab before importing or switching: a running game writes its own copy back
+over the change.
 
 ### Characters — new character, and switching back
 
@@ -93,7 +102,8 @@ Once there is a character in this browser, the game page opens on a **start menu
 The first visit in a clean browser skips the menu and goes straight into the game.
 
 *Saved characters* live in this browser. They are not the same thing as **Download**ed
-`.sol` files, which are separate copies you keep on disk.
+`.sol` files, which are separate copies you keep on disk. The saves page lists them too,
+with **Make active**, **Download** and **Forget** beside each one.
 
 ## 6. Troubleshooting
 

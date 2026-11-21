@@ -245,6 +245,17 @@ class ServerTest(unittest.TestCase):
         text = body.decode("utf-8")
         self.assertIn("Close the game tab before importing", text)
 
+    def test_saves_page_lists_saved_characters(self):
+        # Saved characters live in shs-solo/slots, not in a /shsd key, so the
+        # object table alone never showed them — and the start menu told the
+        # player to download them "from the saves page", where they were not.
+        status, _, body = get("/saves.html")
+        self.assertEqual(status, 200)
+        text = body.decode("utf-8")
+        self.assertIn("Saved characters", text)
+        self.assertIn("Make active", text)
+        self.assertIn('<script src="save-slots.js">', text)
+
     def test_saves_page_parser_is_served(self):
         # saves.html loads sol-format.js; without it the page lists no details.
         status, _, body = get("/sol-format.js")

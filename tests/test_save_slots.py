@@ -141,6 +141,41 @@ class SaveSlotsTest(unittest.TestCase):
         self.assertIsNone(got["out"])
         self.assertEqual(got["keys"], [K_CHAR, SLOTS])   # nothing moved
 
+    # The start menu and the saves page both offer "switch character". Both
+    # must do the same swap, so the rule lives in one function, `activate`.
+
+    def test_activate_swaps_a_saved_character_into_play(self):
+        init = {
+            K_INDEX: "cur-index", K_CHAR: "cur-char",
+            SLOTS: json.dumps([{"ts": "t1", "save": "old-char", "index": "old-index"}]),
+        }
+        got = self.call("return S.activate(st, 't1');", init)
+        self.assertEqual(got["out"]["save"], "old-char")
+        self.assertEqual(got["vals"][K_CHAR], "old-char")
+        self.assertEqual(got["vals"][K_INDEX], "old-index")
+        filed = json.loads(got["vals"][SLOTS])      # what was in play is kept
+        self.assertEqual([s["save"] for s in filed], ["cur-char"])
+
+    def test_activate_over_an_unloadable_character_discards_it(self):
+        # A character without its index cannot load; filing it would only
+        # offer a broken slot back to the player.
+        init = {
+            K_CHAR: "orphan",
+            SLOTS: json.dumps([{"ts": "t1", "save": "good", "index": "good-index"}]),
+        }
+        got = self.call("return S.activate(st, 't1');", init)
+        self.assertEqual(got["vals"][K_CHAR], "good")
+        self.assertNotIn(SLOTS, got["keys"])
+
+    def test_activate_of_an_unknown_slot_changes_nothing(self):
+        # A stale page (another tab forgot the slot) must not file the
+        # character in play on its way to a failure.
+        init = {K_INDEX: "idx", K_CHAR: "char"}
+        got = self.call("return S.activate(st, 'nope');", init)
+        self.assertIsNone(got["out"])
+        self.assertEqual(got["vals"][K_CHAR], "char")
+        self.assertNotIn(SLOTS, got["keys"])
+
     def test_corrupt_slot_data_reads_as_empty(self):
         got = self.call("return S.readSlots(st);", {SLOTS: "{not json"})
         self.assertEqual(got["out"], [])

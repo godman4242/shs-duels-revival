@@ -42,8 +42,9 @@ this site's data wipes it. Once a character exists, opening the game shows a sta
 keeps its level and coins; switching files the current one away).
 
 For copies on disk, right-click the game → **Save Manager** (the download arrow writes a
-`.sol` file, the file icon restores one), or open `/saves.html`, which lists every save in
-this browser and imports one back. See `USER_GUIDE.md` §5 for the exact steps.
+`.sol` file, the file icon restores one), or open `/saves.html`: one page listing your saved
+characters and the one in play, with Make active, Download, Forget and Import. See
+`USER_GUIDE.md` §5 for the exact steps.
 
 ## Project layout
 
@@ -54,6 +55,7 @@ this browser and imports one back. See `USER_GUIDE.md` §5 for the exact steps.
 | `solo_server.py` | Tiny Python server that pretends to be the dead PHP backend and serves the assets |
 | `play.py` / `play.sh` / `play.bat` | One-click launcher for your OS |
 | `index.html` + `ruffle.js` + `*.wasm` | Browser-based Flash player (Ruffle) — no separate install needed |
+| `saves.html` + `save-slots.js` | Characters & saves page: switch character, download and import `.sol` files |
 | `res/`, `data/`, `lang/` | Game assets mirrored locally |
 | `patches/` | The exact source changes made to the game to make it run offline |
 

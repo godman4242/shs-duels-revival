@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Saves — Straw Hat Samurai: Duels (local solo build)</title>
+<title>Characters &amp; saves — Straw Hat Samurai: Duels (local solo build)</title>
 <style>
   :root{
     --bg:#14100e; --panel:#1e1814; --line:#3a2f27;
@@ -23,6 +23,8 @@
   }
   .warn strong{color:#e88; display:block; margin-bottom:4px}
   .warn p{margin:0;font-size:14px;color:var(--ink)}
+  h2{font-size:15px;margin:28px 0 2px;letter-spacing:.02em}
+  h2 span{font-weight:400;color:var(--dim);font-size:13px}
   table{width:100%;border-collapse:collapse;margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden}
   th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);background:#191411}
@@ -56,17 +58,33 @@
 
   <p class="back"><a href="/">← Back to the game</a></p>
 
-  <h1>Saves
+  <h1>Characters &amp; saves
     <small>Straw Hat Samurai: Duels — local solo build. Everything here lives in this browser only.</small>
   </h1>
 
   <div class="warn">
-    <strong>Close the game tab before importing.</strong>
+    <strong>Close the game tab before importing or switching.</strong>
     <p>While the game is running it keeps its own copy of the save in memory and writes it back
     when it closes — that overwrite can land on top of your import. Close the game tab, count two
-    seconds, then import. Reopen the game afterwards.</p>
+    seconds, then import or switch. Reopen the game afterwards, then press <b>Continue</b>.</p>
   </div>
 
+  <h2>Saved characters</h2>
+  <p class="hint">Characters you switched away from on the game's start menu. <b>Make active</b>
+  puts one back in play — whatever is in play now is filed here in its place, so nothing is lost.</p>
+  <table id="slots">
+    <thead>
+      <tr>
+        <th>Character</th><th>Level</th><th>Coins</th><th>Saved</th><th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>The character in this browser</h2>
+  <p class="hint">This is what the game loads right now, stored as two objects that belong
+  together: <code>shsd</code> (the index) and <code>shsd_guest</code> (the character). Download
+  both if you want a full copy — a character without its index will not load.</p>
   <table id="list">
     <thead>
       <tr>
@@ -78,29 +96,35 @@
 
   <div id="msg"></div>
 
-  <p style="margin-top:20px">
+  <h2>Restore from a file</h2>
+  <p style="margin-top:10px">
     <button id="importAny">Import a .sol file…</button>
     <button id="refresh" style="margin-left:6px">Refresh list</button>
   </p>
-  <p class="hint">Use this when the save is gone from the list (cleared site data, new computer).
-  The file is put back under the name stored inside it.</p>
+  <p class="hint">Use this when the save is gone from the table above (cleared site data, new
+  computer). The file is put back under the name stored inside it. Boot the game once first so
+  the browser has a save index to write into.</p>
 
   <details>
     <summary>How to use this page</summary>
     <ol>
-      <li><b>Back up:</b> press <b>Download</b> on a row. You get a <code>.sol</code> file — the
-        game's own save format. Keep as many as you like; they don't interfere.</li>
+      <li><b>Switch character:</b> press <b>Make active</b> on a saved character. The one you
+        are playing now takes its place in this list, so nothing is lost. Close the game tab
+        first, switch, then reopen the game and press <b>Continue</b>.</li>
+      <li><b>Back up:</b> press <b>Download</b> on any row. You get a <code>.sol</code> file —
+        the game's own save format. Keep as many as you like; they don't interfere.</li>
       <li><b>Restore:</b> close the game tab, then press <b>Import</b> on the row you want to
         overwrite and pick the <code>.sol</code> file. A file can only go back into the save it
         came from (its name is stored inside it), which prevents mixing characters up.</li>
       <li><b>Row missing</b> (site data cleared, new computer)? Use <b>Import a .sol file…</b>
-        below the list — it takes the name from the file itself. Boot the game once first so
-        the browser has a save slot to write into.</li>
+        above — it takes the name from the file itself.</li>
+      <li><b>Forget:</b> deletes a saved character from this browser for good. Press
+        <b>Download</b> first if you want a file to keep.</li>
       <li><b>Start over without deleting your backup:</b> download first, then clear this site's
         data in the browser; the game boots a fresh level-1 character on the next visit.</li>
     </ol>
-    <p>The game's own <b>Save Manager</b> (the gear icon in-game) can also download and restore
-    saves. Both work; this page is just a single list of all of them.</p>
+    <p>The game's own <b>Save Manager</b> (right-click in the game) can also download and
+    restore saves. Both work; this page is just one list of all of them.</p>
   </details>
 
   <footer>Local solo build · nothing on this page is sent anywhere.</footer>
@@ -109,6 +133,7 @@
 <input id="picker" type="file" accept=".sol,application/octet-stream" hidden>
 
 <script src="sol-format.js"></script>
+<script src="save-slots.js"></script>
 <script>
 "use strict";
 
@@ -140,17 +165,135 @@ function say(text, ok) {
   msg.className = ok ? "ok" : "bad";
 }
 
-function render() {
+function infoOf(b64) {
+  try { return parseSol(b64); } catch (e) { return null; }
+}
+
+/* "Level 3 · 1,240 coins", or a plain label when the save cannot be read. */
+function describe(b64) {
+  var info = infoOf(b64);
+  if (!info) return "unreadable save";
+  if (info.level == null) return "character";
+  return "Level " + info.level + " · " + Number(info.coins).toLocaleString() + " coins";
+}
+
+function when(ts) {
+  var d = new Date(ts);
+  if (isNaN(d.getTime())) return "";   // a hand-edited slot must not print "Invalid Date"
+  try {
+    return d.toLocaleString(undefined, {
+      day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+  } catch (e) { return ""; }
+}
+
+function emptyRow(tbody, cols, text) {
+  var tr = document.createElement("tr");
+  var td = document.createElement("td");
+  td.colSpan = cols; td.className = "empty"; td.textContent = text;
+  tr.appendChild(td); tbody.appendChild(tr);
+}
+
+function numberCell(value) {
+  var td = document.createElement("td");
+  td.className = "num";
+  td.textContent = value != null && value !== "" ? value : "—";
+  return td;
+}
+
+/* Characters filed away by the start menu. They live in one storage key of
+   this page's own, not in a /shsd object, so an object scan never showed them
+   — which is why the menu's "download it from the saves page" had no row to
+   point at. */
+function renderSlots() {
+  var tbody = document.querySelector("#slots tbody");
+  tbody.textContent = "";
+
+  var slots = SaveSlots.readSlots(localStorage).slice();
+  slots.sort(function (a, b) { return a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0; });
+
+  if (!slots.length) {
+    emptyRow(tbody, 5, "No saved characters yet. On the game's start menu, "
+      + "“Start a new character” files the one you are playing here.");
+    return;
+  }
+
+  slots.forEach(function (slot) {
+    var info = infoOf(slot.save);
+    var name = info ? info.name : "character";
+    var tr = document.createElement("tr");
+
+    var c1 = document.createElement("td");
+    c1.className = "name";
+    c1.textContent = name;
+    tr.appendChild(c1);
+
+    tr.appendChild(numberCell(info ? info.level : null));
+    tr.appendChild(numberCell(info ? info.coins : null));
+
+    var c4 = document.createElement("td");
+    c4.textContent = when(slot.ts);
+    tr.appendChild(c4);
+
+    var c5 = document.createElement("td");
+    c5.className = "act";
+
+    var make = document.createElement("button");
+    make.textContent = "Make active";
+    make.disabled = !slot.index;
+    if (!slot.index) make.title = "No index was stored with this backup, so the game will not load it";
+    make.onclick = function () { makeActive(slot); };
+    c5.appendChild(make);
+
+    var dl = document.createElement("button");
+    dl.textContent = "Download";
+    dl.style.marginLeft = "6px";
+    dl.onclick = function () { download(slot.save, name); };
+    c5.appendChild(dl);
+
+    var forget = document.createElement("button");
+    forget.textContent = "Forget";
+    forget.style.marginLeft = "6px";
+    forget.title = "Remove this saved character from this browser";
+    forget.onclick = function () { forgetSlot(slot); };
+    c5.appendChild(forget);
+
+    tr.appendChild(c5);
+    tbody.appendChild(tr);
+  });
+}
+
+function makeActive(slot) {
+  if (!confirm("Put " + describe(slot.save) + " in play?\n\n"
+      + "What is in play now is kept under Saved characters, so nothing is lost.\n"
+      + "Close the game tab first — a running game writes its own copy back.")) return;
+  var moved;
+  try { moved = SaveSlots.activate(localStorage, slot.ts); }
+  catch (e) { return say("Could not switch character: " + e.message, false); }
+  if (!moved) {
+    render();
+    return say("That saved character is no longer there. Nothing was changed.", false);
+  }
+  say("Now in play: " + describe(moved.save) + ". Open the game to load it.", true);
+  render();
+}
+
+function forgetSlot(slot) {
+  if (!confirm("Forget this saved character (" + describe(slot.save) + ")?\n\n"
+      + "It is deleted from this browser. Press Download first if you want a file to keep.")) return;
+  SaveSlots.forget(localStorage, slot.ts);
+  say("Forgot that saved character.", true);
+  render();
+}
+
+function renderObjects() {
   var tbody = document.querySelector("#list tbody");
   tbody.textContent = "";
   var rows = listSaves();
 
   if (!rows.length) {
-    var tr = document.createElement("tr");
-    var td = document.createElement("td");
-    td.colSpan = 5; td.className = "empty";
-    td.textContent = "No saves in this browser yet. Play the game once, or import a .sol backup below.";
-    tr.appendChild(td); tbody.appendChild(tr);
+    emptyRow(tbody, 5,
+      "No saves in this browser yet. Play the game once, or import a .sol backup below.");
     return;
   }
 
@@ -183,7 +326,7 @@ function render() {
     c5.className = "act";
     var dl = document.createElement("button");
     dl.textContent = "Download";
-    dl.onclick = function () { download(row, name); };
+    dl.onclick = function () { download(row.value, name); };
     var im = document.createElement("button");
     im.textContent = "Import";
     im.style.marginLeft = "6px";
@@ -195,8 +338,10 @@ function render() {
   });
 }
 
-function download(row, name) {
-  var bin = atob(row.value);
+function render() { renderSlots(); renderObjects(); }
+
+function download(b64, name) {
+  var bin = atob(b64);
   var bytes = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   var url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));

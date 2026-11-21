@@ -97,6 +97,23 @@
     return slot;
   }
 
+  /* Put a saved character back in play, filing whatever is in play now.
+   * The start menu and the saves page both switch characters, so the swap is
+   * written here once instead of twice. Nothing moves when the slot is gone
+   * or incomplete: a failed switch must not file the current character.
+   * Returns the restored slot, or null. */
+  function activate(st, ts) {
+    var list = readSlots(st);
+    var target = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].ts === ts) { target = list[i]; break; }
+    }
+    if (!target || typeof target.index !== "string" || !target.index) return null;
+    var cur = current(st);
+    if (cur && cur.complete) stash(st);
+    return restore(st, ts);
+  }
+
   /* Drop one slot for good. Returns it, or null when it was not there. */
   function forget(st, ts) {
     var list = readSlots(st);
@@ -120,6 +137,7 @@
     stash: stash,
     clearCurrent: clearCurrent,
     restore: restore,
+    activate: activate,
     forget: forget
   };
   root.SaveSlots = api;
