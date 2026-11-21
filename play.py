@@ -65,6 +65,15 @@ def main():
         print(f"❌ solo_server.py not found at {server_script}")
         return 1
 
+    # A game window may already be open (a second double-click, or a launcher
+    # still running in another terminal). Reuse it — starting a second server
+    # only prints an "address already in use" traceback, which reads as a crash.
+    if is_port_open("127.0.0.1", PORT):
+        print(f"\n▶ The game is already running at {URL}")
+        print("  Opening it in your browser. Leave the other window open.")
+        open_browser(URL)
+        return 0
+
     print(f"\n▶ Starting local server on {URL} ...")
     proc = subprocess.Popen(
         [sys.executable, server_script, str(PORT)],
