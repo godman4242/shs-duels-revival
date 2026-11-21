@@ -2894,7 +2894,7 @@ package
       
       internal function saveCharCookieData() : *
       {
-         trace("save cookie data");
+         trace("save cookie data level=" + StatsManager.getPlayerLevelString());
          var _loc1_:SharedObject = SharedObject.getLocal(StatsManager.cookieName);
          _loc1_.data.playerlevel = StatsManager.getPlayerLevelString();
          _loc1_.data.dan = StatsManager.getPlayerStats(StatsManager.STAT_DAN);
@@ -2963,8 +2963,9 @@ package
       
       internal function loadCharCookieData() : *
       {
-         trace("load cookie data");
+         trace("load cookie data for " + StatsManager.charname);
          var _loc1_:SharedObject = SharedObject.getLocal(StatsManager.cookieName + "_" + StatsManager.charname);
+         trace("SOLO load saved=" + _loc1_.data.saved + " storedLevel=" + _loc1_.data.playerlevel);
          if(_loc1_.data.saved != true)
          {
             // LOCAL SOLO BUILD: seed a guest character so the overworld knows

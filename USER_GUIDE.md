@@ -49,7 +49,12 @@ After clicking **Play as Guest**, the game auto-logs you in and drops you into t
 
 ## 5. Saves
 
-Your progress is stored in a local file called `.solo_state.json` next to `play.py`. If you delete that file, you start fresh.
+Your progress is kept by your browser, for the game's address (`playerio.localhost:8765`).
+It is not a file next to `play.py`, and deleting `.solo_state.json` does not touch it.
+Clearing this site's data wipes the character.
+
+To keep a backup: right-click the game → **Save Manager** → the download arrow next to
+the `shsd_<name>` row. That writes a `.sol` save file you can keep.
 
 ## 6. Troubleshooting
 

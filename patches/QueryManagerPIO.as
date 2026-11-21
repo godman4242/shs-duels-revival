@@ -550,7 +550,28 @@ package
          {
             loggedIn = true;
             username = "Guest";
+            // LOCAL SOLO BUILD: report the SAVED character instead of an empty
+            // list. An empty list sends the game to character creation, whose
+            // offline path auto-creates "Guest" and saves level-1 defaults over
+            // the real save BEFORE it is ever loaded — progress lost on reload.
             charstring = "";
+            var _soloName:String = StatsManager.charname;
+            if(_soloName == null || _soloName == "")
+            {
+               var _soloMain:SharedObject = SharedObject.getLocal(StatsManager.cookieName);
+               _soloName = _soloMain.data.charname;
+            }
+            if(_soloName != null && _soloName != "")
+            {
+               var _soloChar:SharedObject = SharedObject.getLocal(StatsManager.cookieName + "_" + _soloName);
+               var _soloLvl:String = _soloChar.data.playerlevel;
+               if(_soloLvl == null || _soloLvl == "")
+               {
+                  _soloLvl = "1";
+               }
+               charstring = _soloName + "," + _soloLvl;
+            }
+            trace("SOLO piologin charstring=" + charstring);
             TitleUI.instance.login.serverResponse(0);
             saveLastUpdate("1000000");
             NetworkManager.getInstance();
@@ -991,6 +1012,7 @@ package
          }
          if(offlineMode)
          {
+            trace("SOLO createCharacter OVERWRITES SAVE for " + param1);
             saveAllCharData();
             saveCharName();
             charstring = param1 + ",1";

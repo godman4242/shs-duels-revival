@@ -31,10 +31,14 @@ If `playerio.localhost` does not load, add `127.0.0.1 playerio.localhost` to you
 | Feature | Status |
 |---|---|
 | Solo overworld, quests, NPCs, shops, skills | ✅ works |
-| Saves (Guest character) | ✅ works locally in `.solo_state.json` |
+| Saves (Guest character) | ✅ works — kept in this browser, for this site |
 | Sound, music, art, UI | ✅ works |
 | PvP / multiplayer | ❌ retired — the PlayerIO backend is gone for good |
 | Premium currency / payments | ❌ the payment server is dead — ignored |
+
+Your character lives in this browser, for the site `playerio.localhost:8765` — clearing
+this site's data wipes it. To keep a backup, right-click the game → **Save Manager** and
+use the download arrow next to the `shsd_<name>` row; that writes a `.sol` file.
 
 ## Project layout
 
