@@ -70,7 +70,12 @@
       document.getElementById("hint").textContent = "Ruffle module failed to load.";
       return;
     }
-    var ruffle = typeof RP.newest === "function" ? RP.newest() : RP.sources.local;
+    /* Always use the Ruffle bundled with this build. A browser extension can
+     * register a newer player, and RP.newest() would prefer it — but 0.8.0
+     * throws #1126 on Vector.concat() of a fixed Vector, which the game's
+     * inventory/bank/crafting screens use, leaving a black screen. */
+    var ruffle = RP.sources.local
+      || (typeof RP.newest === "function" ? RP.newest() : null);
     var player = ruffle.createPlayer();
     document.getElementById("game").appendChild(player);
     player.ruffle().load({
