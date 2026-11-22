@@ -148,7 +148,7 @@
 
 	<node>
 		<id>8402944</id>
-		<overwrite>0</overwrite>
+		<overwrite>1</overwrite>
 
 	<roomdata>
 		<room>
