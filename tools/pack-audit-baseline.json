@@ -13,14 +13,7 @@
   "res": 1943,
   "res-server1": 2562
  },
- "game-bg-literals": [
-  "BG_BambooForest",
-  "BG_BambooForestDojo",
-  "BG_BambooForestHut",
-  "BG_BambooForestTown",
-  "BG_TownProcGen",
-  "BG_TownVillage"
- ],
+ "game-bg-literals": [],
  "item-sprites": [
   2000,
   2001,

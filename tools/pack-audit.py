@@ -203,13 +203,15 @@ def audit(packs="res", baseline=None):
     bg_names = {(e.findtext("name") or "").strip() for e in bgdata.findall("bg")}
     add("bg-classes", check_bg_classes(bg_names, bg_pack))
 
-    # names the game build itself asks for (the hut bug was exactly this), minus
-    # all-caps constants (BG_HUTINSIDE) and the game's own loader class
+    # backgrounds the game build itself asks for that the pack does not have —
+    # the hut bug's shape. Exclude names the build defines itself, all-caps
+    # constants (BG_HUTINSIDE) and the game's own loader class.
     game = _swf_body(os.path.join(root, "shs3_solo.swf"))
     if game:
+        own = swf_symbols(game)
         lits = {m.group(0).decode("latin1")
                 for m in re.finditer(rb"(?<![A-Za-z0-9_])BG_[A-Za-z0-9_]+", game)}
-        wanted = {n for n in lits if n != "BG_Loader" and not n.isupper()}
+        wanted = {n for n in lits - own if n != "BG_Loader" and not n.isupper()}
         add("game-bg-literals", check_bg_classes(wanted, bg_pack))
 
     used = set()
