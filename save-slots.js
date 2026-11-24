@@ -21,6 +21,62 @@
   var K_CHAR = PREFIX + "shsd_guest";
   var K_SLOTS = "shs-solo/slots";
 
+  /* The game names the character object after the character: shsd_<charname>.
+   * "guest" is only the default name. A build that names the character
+   * differently must still be seen, or the start menu calls the game
+   * unplayable and offers to delete the index. */
+  function allKeys(st) {
+    if (typeof st.length === "number" && typeof st.key === "function") {
+      var out = [];
+      for (var i = 0; i < st.length; i++) out.push(st.key(i));
+      return out;
+    }
+    return typeof st.keys === "function" ? st.keys() : [];
+  }
+
+  /* The index (shsd) records the active character's name; that name is the
+   * suffix of the object the game will load. Reading it is the only way to
+   * know which shsd_<name> wins when more than one exists. */
+  function indexCharname(st) {
+    var b64 = st.getItem(K_INDEX);
+    if (!b64) return null;
+    try {
+      var raw = (typeof atob === "function") ? atob(b64) : null;
+      if (!raw) return null;
+      var at = raw.indexOf("charname");
+      if (at < 0) return null;
+      var p = at + "charname".length;
+      if (raw.charCodeAt(p) !== 6) return null;   // AMF3 string marker
+      p += 1;
+      var u = raw.charCodeAt(p), len;
+      if (u < 0x80) { len = u >> 1; p += 1; }
+      else { len = (((u & 0x7f) << 7) | raw.charCodeAt(p + 1)) >> 1; p += 2; }
+      var name = raw.substr(p, len);
+      return name || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function charKey(st) {
+    var name = indexCharname(st);
+    if (name) {
+      var key = PREFIX + "shsd_" + name;
+      if (st.getItem(key)) return key;
+    }
+    if (st.getItem(K_CHAR)) return K_CHAR;
+    var found = null;
+    var keys = allKeys(st);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k && k.indexOf(PREFIX + "shsd_") === 0 && k !== K_CHAR) {
+        if (found) return null;   // more than one character; never guess
+        found = k;
+      }
+    }
+    return found;
+  }
+
   function readSlots(st) {
     try {
       var raw = st.getItem(K_SLOTS);
@@ -43,7 +99,8 @@
    * `complete` is false when the index is missing — a character without its
    * index is not a loadable state, so callers must not offer it. */
   function current(st) {
-    var save = st.getItem(K_CHAR);
+    var key = charKey(st);
+    var save = key ? st.getItem(key) : null;
     if (!save) return null;
     var index = st.getItem(K_INDEX);
     return { save: save, index: index, complete: !!index };
@@ -75,7 +132,8 @@
   /* Remove the pair together. Measured: this is the only safe way to ask the
    * game for a new character; clearing the character alone wedges the boot. */
   function clearCurrent(st) {
-    st.removeItem(K_CHAR);
+    var key = charKey(st);
+    if (key) st.removeItem(key);
     st.removeItem(K_INDEX);
   }
 
@@ -90,7 +148,7 @@
     if (i < 0) return null;
     var slot = list[i];
     if (typeof slot.index !== "string" || !slot.index) return null;
-    st.setItem(K_CHAR, slot.save);
+    st.setItem(charKey(st) || K_CHAR, slot.save);
     st.setItem(K_INDEX, slot.index);
     list.splice(i, 1);
     writeSlots(st, list);

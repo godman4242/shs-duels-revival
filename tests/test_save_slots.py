@@ -53,6 +53,11 @@ def run_js(body, init=None):
 
 K_INDEX = "playerio.localhost/shs3_solo.swf/shsd"
 K_CHAR = "playerio.localhost/shs3_solo.swf/shsd_guest"
+# The game names the character object after the character, so a build whose
+# default name is not "guest" writes shsd_<name> instead.
+K_ADMIN = "playerio.localhost/shs3_solo.swf/shsd_admin"
+# A minimal index (base64 of AMF3 "charname" -> a non-default name).
+INDEX_ADMIN = "Y2hhcm5hbWUGC2FkbWlu"
 SLOTS = "shs-solo/slots"
 
 
@@ -80,6 +85,36 @@ class SaveSlotsTest(unittest.TestCase):
         # whose index is missing, which the game will not load.
         got = self.call("return S.current(st);", {K_CHAR: "orphan"})
         self.assertEqual(got["out"]["complete"], False)
+
+    def test_current_reads_a_character_saved_under_another_name(self):
+        # A build whose default character name is not "guest" writes
+        # shsd_<name>; the switcher must see it instead of calling the game
+        # unplayable and offering to delete the index.
+        got = self.call("return S.current(st);", {K_INDEX: "idx", K_ADMIN: "char"})
+        self.assertEqual(got["out"], {"save": "char", "index": "idx", "complete": True})
+
+    def test_current_prefers_the_character_named_in_the_index(self):
+        # The index is authoritative: if it names "admin", the game loads
+        # shsd_admin even when a stale shsd_guest also exists.
+        got = self.call("return S.current(st);",
+                        {K_INDEX: INDEX_ADMIN, K_ADMIN: "admin-char", K_CHAR: "guest-char"})
+        self.assertEqual(got["out"],
+                         {"save": "admin-char", "index": INDEX_ADMIN, "complete": True})
+
+    def test_clear_removes_the_alternate_character_and_index(self):
+        got = self.call("S.clearCurrent(st); return 'ok';",
+                        {K_INDEX: "idx", K_ADMIN: "char", "other": "keep"})
+        self.assertEqual(got["keys"], ["other"])
+
+    def test_restore_writes_to_the_alternate_name(self):
+        # Restoring must land on the key the game actually reads.
+        init = {
+            K_INDEX: "idx", K_ADMIN: "old",
+            SLOTS: json.dumps([{"ts": "t1", "save": "new", "index": "newidx"}]),
+        }
+        got = self.call("return S.restore(st, 't1');", init)
+        self.assertEqual(got["vals"][K_ADMIN], "new")
+        self.assertNotIn(K_CHAR, got["keys"])
 
     def test_forget_drops_only_the_named_slot(self):
         init = {SLOTS: json.dumps([
