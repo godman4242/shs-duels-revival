@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose your role — Straw Hat Samurai: Duels (local solo build)</title>
+<style>
+  :root{--bg:#14100e;--panel:#1e1814;--line:#3a2f27;--ink:#e8ddcf;--dim:#a8988a;
+        --gold:#c9a227;--red:#a83232;--ok:#5f9e5f}
+  *{box-sizing:border-box}
+  body{margin:0;padding:32px 16px 64px;background:var(--bg);color:var(--ink);
+       font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  .wrap{max-width:620px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  h1 small{display:block;font-weight:400;font-size:14px;color:var(--dim);margin-top:4px}
+  p{color:#c9bcae}
+  .warn{background:#2a1512;border:1px solid var(--red);border-radius:6px;
+        padding:12px 14px;font-size:14px}
+  .role{display:block;width:100%;margin:12px 0;padding:16px 18px;border-radius:8px;
+        border:1px solid var(--line);background:var(--panel);color:var(--ink);
+        text-align:left;cursor:pointer;font:inherit}
+  .role:hover{border-color:#6b5340;background:#261e19}
+  .role.admin{border-color:var(--gold)}
+  .role b{font-size:17px}
+  .role small{display:block;color:var(--dim);font-size:13px;margin-top:4px}
+  #msg{margin-top:16px;padding:10px 14px;border-radius:6px;display:none}
+  #msg.ok{display:block;background:#16281a;border:1px solid var(--ok);color:#b9e0b9}
+  #msg.bad{display:block;background:#2a1512;border:1px solid var(--red);color:#e8a8a8}
+  a{color:var(--gold)}
+  code{background:#1b1b26;padding:2px 6px;border-radius:4px;font-size:13px}
+  .foot{margin-top:26px;font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Choose your role
+    <small>Straw Hat Samurai: Duels — local solo build</small>
+  </h1>
+
+  <p class="warn"><b>Close the game tab first.</b> A running game keeps its own copy of the
+  save and can write it back when it closes. Close it, choose here, then open the game.</p>
+
+  <p id="now">Reading this browser's save…</p>
+
+  <button class="role" id="guest">
+    <b>Play as Guest</b>
+    <small>The normal character. No dev commands.</small>
+  </button>
+
+  <button class="role admin" id="admin">
+    <b>Play as Admin</b>
+    <small>Same character, named <code>admin</code>. Unlocks the dev commands in game chat
+    (type <code>/enableconsole dragon</code>, then <code>/help</code>).</small>
+  </button>
+
+  <div id="msg"></div>
+
+  <p class="foot">
+    <a href="/">← Open the game</a> ·
+    <a href="/saves.html">Manage save files</a>
+  </p>
+</div>
+
+<script src="save-slots.js"></script>
+<script>
+(function () {
+  "use strict";
+  var msg = document.getElementById("msg");
+  var now = document.getElementById("now");
+
+  function say(text, ok) {
+    msg.textContent = text;
+    msg.className = ok ? "ok" : "bad";
+  }
+
+  function refresh() {
+    var cur = SaveSlots.current(localStorage);
+    var name = SaveSlots.getCharname(localStorage);
+    var wanted = SaveSlots.getRole(localStorage);
+    if (!cur) {
+      now.innerHTML = "No character in this browser yet. "
+        + (wanted ? "Stored role: <b>" + wanted + "</b> — start the game once and it "
+                    + "will take that role on the next load."
+                  : "Start the game once as Guest, then come back here to choose Admin.");
+      return;
+    }
+    now.innerHTML = "Current role: <b>" + (name || "guest") + "</b>."
+      + (wanted && wanted !== name ? " Stored choice: <b>" + wanted + "</b>." : "")
+      + " Switching renames the character in play; an existing character under the other "
+      + "name is kept in Saved characters.";
+  }
+
+  function choose(role) {
+    SaveSlots.setRole(localStorage, role);
+    var ok = SaveSlots.useRole(localStorage, role);
+    if (!ok) {
+      say("Saved: \"" + role + "\". Start the game once so a character exists; it will "
+        + "become " + role + " on the next load.", true);
+      refresh();
+      return;
+    }
+    say("Now playing as \"" + role + "\". Open the game and press Continue.", true);
+    refresh();
+  }
+
+  document.getElementById("guest").onclick = function () { choose("guest"); };
+  document.getElementById("admin").onclick = function () { choose("admin"); };
+  refresh();
+})();
+</script>
+</body>
+</html>

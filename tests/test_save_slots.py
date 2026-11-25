@@ -56,8 +56,9 @@ K_CHAR = "playerio.localhost/shs3_solo.swf/shsd_guest"
 # The game names the character object after the character, so a build whose
 # default name is not "guest" writes shsd_<name> instead.
 K_ADMIN = "playerio.localhost/shs3_solo.swf/shsd_admin"
-# A minimal index (base64 of AMF3 "charname" -> a non-default name).
+# Minimal indexes (base64 of AMF3 "charname" -> the name).
 INDEX_ADMIN = "Y2hhcm5hbWUGC2FkbWlu"
+INDEX_GUEST = "Y2hhcm5hbWUGC2d1ZXN0"
 SLOTS = "shs-solo/slots"
 
 
@@ -115,6 +116,79 @@ class SaveSlotsTest(unittest.TestCase):
         got = self.call("return S.restore(st, 't1');", init)
         self.assertEqual(got["vals"][K_ADMIN], "new")
         self.assertNotIn(K_CHAR, got["keys"])
+
+    def test_get_charname_reads_the_index(self):
+        got = self.call("return S.getCharname(st);", {K_INDEX: INDEX_ADMIN})
+        self.assertEqual(got["out"], "admin")
+
+    def test_use_role_copies_the_character_and_sets_the_index(self):
+        got = self.call(
+            "return {ok: S.useRole(st, 'admin'), name: S.getCharname(st)};",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char"})
+        self.assertTrue(got["out"]["ok"])
+        self.assertEqual(got["out"]["name"], "admin")
+        self.assertEqual(got["vals"][K_ADMIN], "guest-char")
+
+    def test_use_role_fails_without_a_character(self):
+        got = self.call("return S.useRole(st, 'admin');", {K_INDEX: INDEX_GUEST})
+        self.assertFalse(got["out"])
+        self.assertNotIn(K_ADMIN, got["keys"])
+
+    def test_set_and_get_role(self):
+        got = self.call("S.setRole(st, 'admin'); return S.getRole(st);", {})
+        self.assertEqual(got["out"], "admin")
+
+    def test_apply_role_renames_the_active_character(self):
+        got = self.call(
+            "S.setRole(st, 'admin'); return {ok: S.applyRole(st), name: S.getCharname(st)};",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char"})
+        self.assertTrue(got["out"]["ok"])
+        self.assertEqual(got["out"]["name"], "admin")
+        self.assertEqual(got["vals"][K_ADMIN], "guest-char")
+
+    def test_use_role_removes_the_old_character_after_renaming(self):
+        """A leftover shsd_guest makes a cleared game look like it still has a
+        character: charKey() falls back to it and the menu then claims the save
+        is unloadable. The rename must move the character, not copy it."""
+        got = self.call(
+            "return S.useRole(st, 'admin');",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char"})
+        self.assertTrue(got["out"])
+        self.assertEqual(got["vals"][K_ADMIN], "guest-char")
+        self.assertNotIn(K_CHAR, got["keys"])
+
+    def test_role_needs_apply_when_the_game_created_a_guest(self):
+        got = self.call(
+            "S.setRole(st, 'admin'); return S.roleNeedsApply(st);",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char"})
+        self.assertTrue(got["out"])
+
+    def test_role_needs_apply_is_false_when_the_name_matches(self):
+        got = self.call(
+            "S.setRole(st, 'admin'); return S.roleNeedsApply(st);",
+            {K_INDEX: INDEX_ADMIN, K_ADMIN: "admin-char"})
+        self.assertFalse(got["out"])
+
+    def test_role_needs_apply_is_false_without_a_chosen_role(self):
+        got = self.call(
+            "return S.roleNeedsApply(st);",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char"})
+        self.assertFalse(got["out"])
+
+    def test_role_needs_apply_is_false_without_a_character(self):
+        got = self.call(
+            "S.setRole(st, 'admin'); return S.roleNeedsApply(st);",
+            {K_INDEX: INDEX_GUEST})
+        self.assertFalse(got["out"])
+
+    def test_use_role_files_the_character_it_replaces(self):
+        got = self.call(
+            "return S.useRole(st, 'admin');",
+            {K_INDEX: INDEX_GUEST, K_CHAR: "guest-char", K_ADMIN: "old-admin"})
+        self.assertTrue(got["out"])
+        self.assertEqual(got["vals"][K_ADMIN], "guest-char")
+        slots = json.loads(got["vals"][SLOTS])
+        self.assertEqual(slots[0]["save"], "old-admin")
 
     def test_forget_drops_only_the_named_slot(self):
         init = {SLOTS: json.dumps([

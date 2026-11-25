@@ -27,6 +27,7 @@ reference/
 
 # local backups
 *.bak-*
+*.swf.orig
 
 # decoded game payload — decrypted decompilable bytecode, LOCAL ONLY (repo is public)
 payload-2026-DEC.swf

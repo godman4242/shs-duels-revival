@@ -88,6 +88,38 @@
       allowExternalHttp: true,
     });
     window.__game = player;
+    watchRole();
+  }
+
+  /* A character created while "Admin" is chosen is born as the game's own
+   * default name. The running game holds that name in memory, so the fix is to
+   * rename the save and reload once — measured: the rename survives the reload
+   * and the game then saves under the new name. */
+  var ROLE_RELOADED = "shs-solo/role-reloaded";
+  var RESUME = "shs-solo/resume-after-rename";
+
+  function watchRole() {
+    if (!SaveSlots.getRole(localStorage)) return;
+    /* Only a character the game creates needs this, and it does so within
+     * about a minute of boot. Stop once the name is right, and give up after
+     * three — never reload a game the player has been playing. */
+    var stopAt = Date.now() + 180000;
+    var timer = setInterval(function () {
+      if (!SaveSlots.roleNeedsApply(localStorage)) {
+        sessionStorage.removeItem(ROLE_RELOADED);
+        var cur = SaveSlots.current(localStorage);
+        if ((cur && cur.complete) || Date.now() > stopAt) clearInterval(timer);
+        return;
+      }
+      /* One automatic reload. If the name did not stick, stop rather than loop. */
+      if (sessionStorage.getItem(ROLE_RELOADED)) { clearInterval(timer); return; }
+      var role = SaveSlots.getRole(localStorage);
+      if (!role || !SaveSlots.useRole(localStorage, role)) return;
+      sessionStorage.setItem(ROLE_RELOADED, role);
+      /* Come back into the game, not into the menu the player just left. */
+      sessionStorage.setItem(RESUME, "1");
+      location.reload();
+    }, 1000);
   }
 
   /* "Level 3 · 1,240 coins" from a stored .sol, or a plain label if unreadable. */
@@ -128,6 +160,12 @@
     var slots = SaveSlots.readSlots(st);
     var actions = document.getElementById("menu-actions");
     actions.textContent = "";
+    actions.appendChild(button(
+      "Choose Guest or Admin",
+      "Dev commands are available only in Admin",
+      "",
+      function () { location.href = "/roles.html"; }
+    ));
 
     /* Two states will not load: a character without its index, and an index
      * without its character. Neither may be offered as "play". */
@@ -242,12 +280,18 @@
 
   function init() {
     try {
-      /* Show the menu when there is anything to decide about — a character,
-         a saved one, or a stray index that on its own stops the game loading. */
-      var anything = SaveSlots.current(localStorage)
-        || SaveSlots.readSlots(localStorage).length
-        || localStorage.getItem(SaveSlots.K_INDEX);
-      if (!anything) { boot(); return; }
+      /* Re-apply the stored role first: it makes the choice survive "Start a
+         new character" (the game always creates a Guest). */
+      SaveSlots.applyRole(localStorage);
+      /* The one automatic role rename reloads the page. Come back into the
+         game, not onto the menu the player just left. */
+      if (sessionStorage.getItem(RESUME)) {
+        sessionStorage.removeItem(RESUME);
+        var cur = SaveSlots.current(localStorage);
+        if (cur && cur.complete) { boot(); return; }
+      }
+      /* Always show the menu, so a first-time player sees the role choice
+         (Guest or Admin) before the game starts. */
       renderMenu();
       document.getElementById("menu").hidden = false;
     } catch (e) {

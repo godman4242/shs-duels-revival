@@ -20,6 +20,7 @@
   var K_INDEX = PREFIX + "shsd";
   var K_CHAR = PREFIX + "shsd_guest";
   var K_SLOTS = "shs-solo/slots";
+  var K_ROLE = "shs-solo/role";
 
   /* The game names the character object after the character: shsd_<charname>.
    * "guest" is only the default name. A build that names the character
@@ -56,6 +57,101 @@
     } catch (e) {
       return null;
     }
+  }
+
+  /* Replace the index's charname in place. The AMF3 string length is rewritten
+   * too, so a different-length name is safe (1-byte U29 for names < 64). */
+  function rewriteCharname(raw, name) {
+    var at = raw.indexOf("charname");
+    if (at < 0 || raw.charCodeAt(at + "charname".length) !== 6) return null;
+    var lp = at + "charname".length + 1;
+    var u = raw.charCodeAt(lp), bytes, len;
+    if (u < 0x80) { len = u >> 1; bytes = 1; }
+    else { len = (((u & 0x7f) << 7) | raw.charCodeAt(lp + 1)) >> 1; bytes = 2; }
+    if (!name || name.length >= 64) return null;
+    var enc = String.fromCharCode((name.length << 1) | 1);
+    return raw.substr(0, lp) + enc + name + raw.substr(lp + bytes + len);
+  }
+
+  /* File a character into the saved-character list so replacing it does not
+   * lose it. The index is the current index rewritten to that character's name. */
+  function fileSlot(st, save, index) {
+    if (!save || !index) return;
+    var list = readSlots(st);
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].save === save) return;
+    }
+    list.unshift({ ts: new Date().toISOString(), save: save, index: index });
+    writeSlots(st, list);
+  }
+
+  function getRole(st) {
+    var role = st.getItem(K_ROLE);
+    return (role === "admin" || role === "guest") ? role : null;
+  }
+
+  function setRole(st, name) {
+    if (name !== "admin" && name !== "guest") return false;
+    st.setItem(K_ROLE, name);
+    return true;
+  }
+
+  /* Make the character in play take the role's name. This is a rename, not a
+   * second character: the same level, items and quests. If a character already
+   * sits under that role's name, it is filed into the saved list first. */
+  function useRole(st, name) {
+    if (!name) return false;
+    var b64 = st.getItem(K_INDEX);
+    if (!b64) return false;
+    var target = PREFIX + "shsd_" + name;
+    var cur = charKey(st);
+    var curSave = cur ? st.getItem(cur) : null;
+    var targetSave = st.getItem(target);
+    if (curSave) {
+      if (cur !== target) {
+        if (targetSave && targetSave !== curSave) {
+          try {
+            fileSlot(st, targetSave, btoa(rewriteCharname(atob(b64), name)));
+          } catch (e) {}
+        }
+        st.setItem(target, curSave);
+      }
+    } else if (!targetSave) {
+      return false;   // no character to rename and none under that role
+    }
+    try {
+      var raw = (typeof atob === "function") ? atob(b64) : null;
+      if (!raw) return false;
+      var next = rewriteCharname(raw, name);
+      if (!next) return false;
+      st.setItem(K_INDEX, btoa(next));
+      /* Move, don't copy: a leftover shsd_guest survives clearCurrent() and
+       * then reads as a character whose index is missing. Only once the index
+       * points at the new name, so a failure above cannot lose the save. */
+      if (cur && cur !== target) st.removeItem(cur);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /* True when the character in play does not carry the role the player chose,
+   * i.e. the game has just created its own default after the choice was made.
+   * A half-written character (no index) is left alone: nothing to rename yet. */
+  function roleNeedsApply(st) {
+    var role = getRole(st);
+    if (!role) return false;
+    var name = indexCharname(st);
+    if (!name || name === role) return false;
+    return !!charKey(st);
+  }
+
+  /* Re-apply the stored role before the game boots. This is what makes the
+   * choice survive "Start a new character" (the game always creates a Guest). */
+  function applyRole(st) {
+    var role = getRole(st);
+    if (!role) return false;
+    return useRole(st, role);
   }
 
   function charKey(st) {
@@ -196,7 +292,13 @@
     clearCurrent: clearCurrent,
     restore: restore,
     activate: activate,
-    forget: forget
+    forget: forget,
+    getCharname: indexCharname,
+    getRole: getRole,
+    setRole: setRole,
+    useRole: useRole,
+    applyRole: applyRole,
+    roleNeedsApply: roleNeedsApply
   };
   root.SaveSlots = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
